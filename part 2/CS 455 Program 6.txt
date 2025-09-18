@@ -1,0 +1,14 @@
+CS 455
+Program #6
+Ray Tracing
+Dr. Egbert
+For this program you will extend the ray-tracer you wrote in Program 5. Adding
+the capabilities of this assignment will allow you to generate images that are really quite
+good. The additional capabilities you need to add to your ray tracer are:
+1. The ability to ray trace polygons.
+2. The ability to handle a single shadow ray per intersection.
+3. The ability to trace reflection rays at intersections.
+As with program 5, we will give you two test scenes that you need to render. In addition,
+you will need to render a scene that you create which is more complicated than the ones
+we give you. Make the scene you create fun and interesting. This may be the culmination
+of your ray tracing career, so make it good!
