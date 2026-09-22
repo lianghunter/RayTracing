@@ -1,0 +1,8 @@
+[
+{
+  "directory": "C:/Users/Hunter/Documents/CS655/RayTracing/build",
+  "command": "C:\\msys64\\ucrt64\\bin\\g++.exe  @CMakeFiles\\RayTracer655.dir\\includes_CXX.rsp -g -o CMakeFiles\\RayTracer655.dir\\Raytracer.cpp.obj -c C:\\Users\\Hunter\\Documents\\CS655\\RayTracing\\Raytracer.cpp",
+  "file": "C:/Users/Hunter/Documents/CS655/RayTracing/Raytracer.cpp",
+  "output": "CMakeFiles/RayTracer655.dir/Raytracer.cpp.obj"
+}
+]

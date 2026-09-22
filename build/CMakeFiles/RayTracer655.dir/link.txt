@@ -1,0 +1,3 @@
+"C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\RayTracer655.dir/objects.a
+C:\msys64\ucrt64\bin\ar.exe qc CMakeFiles\RayTracer655.dir/objects.a @CMakeFiles\RayTracer655.dir\objects1.rsp
+C:\msys64\ucrt64\bin\g++.exe -g -Wl,--whole-archive CMakeFiles\RayTracer655.dir/objects.a -Wl,--no-whole-archive -o bin\Debug\RayTracer655.exe -Wl,--out-implib,libRayTracer655.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\RayTracer655.dir\linkLibs.rsp

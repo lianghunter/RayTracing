@@ -15,7 +15,8 @@ using namespace std;
 
 int main() {
 
-    light spotlight(vec3(1, 0, 0), color(1,1,1));
+    std::vector<light> lights = { light(unit_vector(vec3(1, 0, 0)), color(1,1,1)),
+                                  light(light_type::point, point3(0, 0, 0), color(1,1,1)) };
     color ambient_light(0.1, 0.1, 0.1);
     color background_color(0.2, 0.2, 0.2);
 
@@ -56,5 +57,5 @@ int main() {
     cam.vup      = vec3(0,1,0);
     cam.vfov     = 90;
 
-    cam.render(world, spotlight, ambient_light, background_color);
+    cam.render(world, lights, ambient_light, background_color);
 }

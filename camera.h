@@ -4,9 +4,11 @@
 #include "hittable.h"
 #include <fstream>
 #include <iostream>
+#include <vector>
 
 #include "rtweekend.h"
 #include "material.h"
+#include "light.h"
 
 class camera {
   public:
@@ -19,7 +21,7 @@ class camera {
 
     double vfov = 90;  // Vertical view angle (field of view)
 
-    void render(const hittable& world, const light& light_source, const color& ambient_light, const color& background_color) {
+    void render(const hittable& world, const std::vector<light>& lights, const color& ambient_light, const color& background_color) {
         initialize();
 
         // Open a file for writing
@@ -33,7 +35,7 @@ class camera {
                 color pixel_color(0,0,0);
                 for (int sample = 0; sample < samples_per_pixel; sample++) {
                     ray r = get_ray(i, j);
-                    pixel_color += ray_color(r, world, light_source, ambient_light, background_color, false);
+                    pixel_color += ray_color(r, world, lights, ambient_light, background_color, false);
                 }
                 write_color(outfile, pixel_samples_scale * pixel_color); // Write to file
             }
@@ -111,67 +113,78 @@ class camera {
         return v - 2 * dot(v, n) * n;
     }
 
-    color ray_color(const ray& r, const hittable& world, const light& light_source, const color& ambient_light, const color& background_color, bool reflected) {
-        hit_record rec;
+    color ray_color(const ray& r, const hittable& world, const std::vector<light>& lights, const color& ambient_light, const color& background_color, bool reflected) {
+        hit_record record;
     
         // If the ray hits an object in the world
-        if (world.hit(r, interval(0, infinity), rec)) {
-            vec3 normal = rec.normal; // Surface normal at the hit point
-            vec3 hit_point = r.at(rec.t); // Hit point in 3D space
-    
-            // Light direction (normalized)
-            vec3 light_dir = unit_vector(light_source.direction());
+        if (world.hit(r, interval(0, infinity), record)) {
+            vec3 normal = record.normal; // Surface normal at the hit point
+            vec3 hit_point = r.at(record.t); // Hit point in 3D space
     
             // View direction (from hit point to camera)
             vec3 view_dir = unit_vector(r.origin() - hit_point);
-    
-            // Reflection direction
-            vec3 reflect_dir = reflect(-light_dir, normal);
 
             vec3 hit_ray_origin = hit_point + normal * 0.001; // Bias to avoid self-intersection
+
+            // Ambient component
+            color result = ambient_light * record.material.ka * record.material.od;
+
+            // Add the direct contribution from each visible light.
+            for (const light& light_source : lights) {
+                vec3 light_dir;
+                double shadow_max = infinity;
+                double attenuation = 1.0;
+
+                if(!light_source.is_point()){
+                    light_dir = unit_vector(light_source.direction());
+                }
+                else{
+                    vec3 to_light = light_source.position() - hit_point;
+                    double light_distance = to_light.length();
+                    if (light_distance <= 0.001) {
+                        continue;
+                    }
+
+                    light_dir = to_light / light_distance;
+                    shadow_max = light_distance;
+                    attenuation = 1.0 / (light_distance * light_distance);
+                }
+
+                ray shadow_ray(hit_ray_origin, light_dir);
+                hit_record shadow_record;
+
+                if (world.hit(shadow_ray, interval(0.001, shadow_max), shadow_record)) {
+                    continue;
+                }
+
+                // Diffuse component
+                double diffuse_intensity = std::max(dot(normal, light_dir), 0.0);
+                result += attenuation * light_source.intensity() * record.material.kd
+                    * record.material.od * diffuse_intensity;
+
+                // Specular component
+                vec3 reflect_dir = reflect(-light_dir, normal);
+                double specular_intensity = std::pow(
+                    std::max(dot(reflect_dir, view_dir), 0.0), record.material.kgls);
+                result += attenuation * light_source.intensity() * record.material.ks
+                    * record.material.os * specular_intensity;
+            }
 
             color reflection_ray_color(0,0,0);
 
             //if material is reflective, then send a reflected ray
-            if((rec.material.refl > 0.0) && !reflected){
+            if((record.material.refl > 0.0) && !reflected){
                 ray reflected_ray(hit_ray_origin, reflect(r.direction(), normal));
-                if(world.hit(reflected_ray, interval(0, infinity), rec)){
-                    reflection_ray_color = ray_color(reflected_ray, world, light_source, ambient_light, background_color, true);
-                    
-                    //for some reason the rec is permanently set to the triangle's rec, this resets back to the sphere's rec
-                    if (world.hit(r, interval(0, infinity), rec)){
-                        int x = 0;
-                    }
+                hit_record reflected_record;
+                if(world.hit(reflected_ray, interval(0, infinity), reflected_record)){
+                    reflection_ray_color = ray_color(reflected_ray, world, lights, ambient_light, background_color, true);
                 }
                 else{
                     reflection_ray_color = background_color;
                 }
             }
-            else{
-                //send shadow ray to light source
-                //negative direction of light source
-                //offset hit point by a small amount to avoid self intersection
-                //if hit, then shadow
-                ray shadow_ray(hit_ray_origin, light_dir);
-                if(world.hit(shadow_ray, interval(0, infinity), rec)){
-                    return ambient_light * rec.material.ka * rec.material.od;
-                }
-            }
 
-            // Ambient component
-            color ambient = ambient_light * rec.material.ka * rec.material.od;
-
-            // Diffuse component
-            double diffuse_intensity = std::max(dot(normal, light_dir), 0.0);
-            color diffuse = light_source.intensity() * rec.material.kd * rec.material.od * diffuse_intensity;
-    
-            // Specular component
-            double specular_intensity = std::pow(std::max(dot(reflect_dir, view_dir), 0.0), rec.material.kgls);
-            color specular = light_source.intensity() * rec.material.ks * rec.material.os * specular_intensity;
-    
-            // Combine components
-            //+ Refl * reflection_ray_color
-            return ambient + diffuse + specular + rec.material.refl * reflection_ray_color;
+            return result + record.material.refl * reflection_ray_color;
         }
     
         // If the ray doesn't hit anything, return the background color
