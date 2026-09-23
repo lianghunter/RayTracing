@@ -15,6 +15,7 @@ class camera {
     double aspect_ratio = 1.0;  // Ratio of image width over height
     int    image_width  = 100;  // Rendered image width in pixel count
     int    samples_per_pixel = 10;   // Count of random samples for each pixel
+    int    max_ray_depth = 5;    // Maximum number of reflection/refraction bounces
     point3 lookfrom = point3(0,0,0);   // Point camera is looking from
     point3 lookat   = point3(0,0,-1);  // Point camera is looking at
     vec3   vup      = vec3(0,1,0);     // Camera-relative "up" direction
@@ -35,7 +36,7 @@ class camera {
                 color pixel_color(0,0,0);
                 for (int sample = 0; sample < samples_per_pixel; sample++) {
                     ray r = get_ray(i, j);
-                    pixel_color += ray_color(r, world, lights, ambient_light, background_color, false);
+                    pixel_color += ray_color(r, world, lights, ambient_light, background_color, 0);
                 }
                 write_color(outfile, pixel_samples_scale * pixel_color); // Write to file
             }
@@ -113,7 +114,21 @@ class camera {
         return v - 2 * dot(v, n) * n;
     }
 
-    color ray_color(const ray& r, const hittable& world, const std::vector<light>& lights, const color& ambient_light, const color& background_color, bool reflected) {
+    vec3 refract(const vec3& incident, const vec3& normal, double eta_ratio) {
+        double cos_theta = std::min(dot(-incident, normal), 1.0);
+        vec3 perpendicular = eta_ratio * (incident + cos_theta * normal);
+
+        double parallel_length_squared = perpendicular.length_squared();
+        if (parallel_length_squared > 1.0) {
+            return vec3(0, 0, 0);
+        }
+
+        vec3 parallel = -std::sqrt(1.0 - parallel_length_squared) * normal;
+
+        return perpendicular + parallel;
+    }
+
+    color ray_color(const ray& r, const hittable& world, const std::vector<light>& lights, const color& ambient_light, const color& background_color, int ray_depth) {
         hit_record record;
     
         // If the ray hits an object in the world
@@ -173,18 +188,37 @@ class camera {
             color reflection_ray_color(0,0,0);
 
             //if material is reflective, then send a reflected ray
-            if((record.material.refl > 0.0) && !reflected){
+            if((record.material.refl > 0.0) && ray_depth < max_ray_depth){
                 ray reflected_ray(hit_ray_origin, reflect(r.direction(), normal));
                 hit_record reflected_record;
                 if(world.hit(reflected_ray, interval(0, infinity), reflected_record)){
-                    reflection_ray_color = ray_color(reflected_ray, world, lights, ambient_light, background_color, true);
+                    reflection_ray_color = ray_color(reflected_ray, world, lights, ambient_light, background_color, ray_depth + 1);
                 }
                 else{
                     reflection_ray_color = background_color;
                 }
             }
 
-            return result + record.material.refl * reflection_ray_color;
+            
+            color refraction_ray_color(0,0,0);
+            if ((record.material.refr > 0.0) && ray_depth < max_ray_depth) {
+                double refraction_ratio = record.front_face ? (1.0 / record.material.ior) : record.material.ior;
+
+                vec3 refracted_direction = refract(unit_vector(r.direction()), normal, refraction_ratio);
+
+                // TODO: Decide how to handle total internal reflection and
+                // whether refraction should consume the same bounce limit.
+                if (refracted_direction.length_squared() > 0.0) {
+                    ray refracted_ray(hit_point - normal * 0.001,
+                                      refracted_direction);
+                    refraction_ray_color = ray_color(
+                        refracted_ray, world, lights, ambient_light,
+                        background_color, ray_depth + 1);
+                }
+            }
+
+            return result + record.material.refl * reflection_ray_color
+                + record.material.refr * refraction_ray_color;
         }
     
         // If the ray doesn't hit anything, return the background color

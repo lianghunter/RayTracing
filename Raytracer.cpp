@@ -16,7 +16,7 @@ using namespace std;
 int main() {
 
     std::vector<light> lights = { light(unit_vector(vec3(1, 0, 0)), color(1,1,1)),
-                                  light(light_type::point, point3(0, 0, 0), color(1,1,1)) };
+                                  light(light_type::point, point3(-0.5, 0.5, 0), color(1,1,1)) };
     color ambient_light(0.1, 0.1, 0.1);
     color background_color(0.2, 0.2, 0.2);
 
@@ -38,6 +38,10 @@ int main() {
     s4.material = {0.0, 0.1, 0.1, color(0.75, 0.75, 0.75), color(1.0, 1.0, 1.0), 10.0, 0.9};
     world.add(make_shared<sphere>(s4));
 
+    sphere s5(point3(-0.15, -0.05, 0.4), 0.05);
+    s5.material = {0.05, 0.2, 0.05, color(0.9, 0.95, 1.0), color(1.0, 1.0, 1.0), 64.0, 0.1, 1.0, 1.5};
+    world.add(make_shared<sphere>(s5));
+
     triangle t1(point3(0.3, -0.3, -0.4), point3(0.0, 0.3, -0.1), point3(-0.3, -0.3, 0.2));
     t1.material = {0.9, 0.9, 0.1, color(0.0, 0, 1.0), color(1.0, 1.0, 1.0), 32.0, 0.0};
     world.add(make_shared<triangle>(t1));
@@ -45,6 +49,12 @@ int main() {
     triangle t2(point3(-0.2, 0.1, 0.1), point3(-0.2, -0.5, 0.2), point3(-0.2, 0.1, -0.3));
     t2.material = {0.9, 0.5, 0.1, color(1.0, 1.0, 0.0), color(1.0, 1.0, 1.0), 4.0, 0.0};
     world.add(make_shared<triangle>(t2));
+
+    triangle t3(point3(0.30, 0.14, 0.02),
+                point3(0.46, -0.14, 0.02),
+                point3(0.14, -0.14, 0.02));
+    t3.material = {0.05, 0.2, 0.05, color(0.9, 0.95, 1.0), color(1.0, 1.0, 1.0), 64.0,0.1,1.0,1.5};
+    world.add(make_shared<triangle>(t3));
 
     camera cam;
 
